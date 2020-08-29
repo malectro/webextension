@@ -1,9 +1,11 @@
 {
+  "test": ".*.ts$",
   "jsc": {
-    "syntax": "typescript",
-    "target": "es2020",
-    "numericSeparator": true,
-    "topLevelAwait": true,
-    "importMeta": true
-  },
+    "target": "es2019",
+    "parser": {
+      "syntax": "typescript",
+      "tsx": false,
+      "dynamicImport": false
+    }
+  }
 }
