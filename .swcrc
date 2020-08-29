@@ -1,11 +1,11 @@
 {
-  "test": ".*.ts$",
+  "test": ".*.tsx?$",
   "jsc": {
     "target": "es2019",
     "parser": {
       "syntax": "typescript",
-      "tsx": false,
-      "dynamicImport": false
+      "tsx": true,
+      "dynamicImport": true
     }
   }
 }

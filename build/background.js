@@ -1346,17 +1346,51 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! webextension-polyfill-ts */ "./node_modules/webextension-polyfill-ts/lib/index.js");
 /* harmony import */ var webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__);
 
-console.log('hello');
 webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.onClicked.addListener(async ()=>{
     const tabs = await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.query({
         currentWindow: true,
         pinned: false
     });
     const newTab = await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.create({
-        active: true
+        active: true,
+        url: "/archive.html"
     });
-    await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.remove(tabs.map((tab)=>tab.id
-    ).filter(isDefined));
+    const listener = (message, sender)=>{
+        var ref;
+        if (((ref = sender.tab) === null || ref === void 0 ? void 0 : ref.id) === newTab.id && message.type === "archive-loaded") {
+            webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].runtime.onMessage.removeListener(listener);
+            return Promise.resolve(tabsInfo);
+        }
+    };
+    webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].runtime.onMessage.addListener(listener);
+    if (!newTab.id) {
+        throw new Error("Failed to create new tab.");
+    }
+    const tabsMap = new Map();
+    for (const tab of tabs){
+        let tabInfo = tabsMap.get(tab.url);
+        if (!tabInfo) {
+            tabInfo = {
+                title: tab.title,
+                url: tab.url,
+                count: 1
+            };
+            tabsMap.set(tabInfo.url, tabInfo);
+        }
+        tabInfo.count++;
+    }
+    const tabsInfo = [
+        ...tabsMap.values()
+    ];
+    try {
+        const response = await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.sendMessage(newTab.id, {
+            type: "archive-tabs",
+            payload: tabsInfo
+        });
+        console.log("response", response);
+    } catch (error) {
+        console.error(error);
+    }
 });
 function isDefined(value) {
     return value != null;

@@ -1,0 +1,21 @@
+.root {
+  padding: 20px;
+  flex-flow: column;
+
+  & > * {
+    flex: 0 0 auto;
+    margin-bottom: 10px;
+  }
+}
+
+.tab {
+  flex-flow: column;
+
+  & > * {
+    flex: 0 0 auto;
+  }
+}
+
+.tabTitle {
+  font-weight: bold;
+}
