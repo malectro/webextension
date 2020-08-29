@@ -1,0 +1,9 @@
+{
+  "jsc": {
+    "syntax": "typescript",
+    "target": "es2020",
+    "numericSeparator": true,
+    "topLevelAwait": true,
+    "importMeta": true
+  },
+}
