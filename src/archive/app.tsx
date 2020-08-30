@@ -1,6 +1,6 @@
 import {browser} from 'webextension-polyfill-ts';
 import * as React from 'react';
-import {openDB, DBSchema} from 'idb/with-async-ittr';
+import {openDB, DBSchema, IDBPTransaction} from 'idb/with-async-ittr';
 
 import {KyleMessage, TabInfo} from './messages';
 
@@ -21,25 +21,26 @@ export const App: React.FC = function App() {
       });
   }, []);
 
-  React.useEffect(() => {
-    const run = async () => {
-      const limit = 10;
-      const tabs = [];
-      const index = (await db).transaction('tabs').store.index('by-lastVisit');
+  const fetchRecent = async () => {
+    const limit = 10;
+    const tabs = [];
+    const index = (await db).transaction('tabs').store.index('by-lastVisit');
 
-      let i = 0;
-      for await (const cursor of index.iterate()) {
-        if (i >= limit) {
-          break;
-        }
-
-        tabs.push(cursor.value);
-        i++;
+    let i = 0;
+    for await (const cursor of index.iterate()) {
+      if (i >= limit) {
+        break;
       }
 
-      setArchivedTabs(tabs);
-    };
-    run();
+      tabs.push(cursor.value);
+      i++;
+    }
+
+    setArchivedTabs(tabs);
+  };
+
+  React.useEffect(() => {
+    fetchRecent();
   }, [recentTabs]);
 
   /*
@@ -59,17 +60,31 @@ export const App: React.FC = function App() {
   }, []);
    */
 
+  const handleArchive = async (tab: TabInfo) => {
+    setRecentTabs(recentTabs.filter(recentTab => recentTab !== tab));
+    const dbTab = await (await db).get('tabs', tab.url);
+    if (!dbTab) {
+      await addTab(tab);
+      await fetchRecent();
+    }
+  };
+
+  const handleForget = async (tab: TabInfo) => {
+    await (await db).delete('tabs', tab.url);
+    fetchRecent();
+  };
+
   return (
     <div className={css.root}>
       <h1>Tabs</h1>
       <h2>Just Archived</h2>
       {recentTabs.map(tab => (
-        <Tab tab={tab} key={tab.url} />
+        <Tab tab={tab} key={tab.url} onArchive={handleArchive} />
       ))}
 
       <h2>Recently Visited</h2>
       {archivedTabs.map(tab => (
-        <Tab tab={tab} key={tab.url} />
+        <Tab tab={tab} key={tab.url} onForget={handleForget} />
       ))}
     </div>
   );
@@ -98,14 +113,40 @@ function formatRelativeTime(date: Date, currentDate = new Date()) {
   }
 }
 
-function Tab({tab}: {tab: TabInfo}) {
+function Tab({
+  tab,
+  archived,
+  onArchive,
+  onForget,
+}: {
+  tab: TabInfo;
+  archived?: unknown;
+  onArchive?: (tab: TabInfo) => unknown;
+  onForget?: (tab: TabInfo) => unknown;
+}) {
   return (
     <div className={css.tab}>
-      <div className={css.tabTitle}>{tab.title}</div>
-      <a href={tab.url}>{tab.url}</a>
-      <div className={css.tabDetails}>
-        <span>Last Visit: {formatRelativeTime(tab.lastVisit)}</span>
-        <span>Visits: {tab.count}</span>
+      <div>
+        <input type="checkbox" />
+      </div>
+      <div className={css.tabContent}>
+        <div className={css.tabHeader}>
+          <span className={css.tabTitle}>{tab.title}</span>
+          <div className={css.tabActions}>
+            <button>Read later</button>
+            {!archived && onArchive && (
+              <button onClick={() => onArchive(tab)}>Archive</button>
+            )}
+            {onForget && <button onClick={() => onForget(tab)}>Forget</button>}
+          </div>
+        </div>
+        <span>
+          <a href={tab.url}>{tab.url}</a>
+        </span>
+        <div className={css.tabDetails}>
+          <span>Last Visit: {formatRelativeTime(tab.lastVisit)}</span>
+          <span>Visits: {tab.count}</span>
+        </div>
       </div>
     </div>
   );
@@ -121,19 +162,28 @@ const db = ((window as any).myDb = openDB<TabDb>('tab-db', 1, {
   },
 }));
 
+async function _addTab(tab: TabInfo, tx: IDBPTransaction<TabDb, ['tabs']>) {
+  let dbTab = await tx.store.get(tab.url);
+  if (!dbTab) {
+    dbTab = tab;
+  } else {
+    dbTab.count++;
+  }
+  await tx.store.put(dbTab);
+}
+
+async function addTab(tab: TabInfo) {
+  const tx = (await db).transaction('tabs', 'readwrite');
+  return _addTab(tab, tx);
+}
+
 async function addTabs(tabs: Array<TabInfo>) {
   const tx = (await db).transaction('tabs', 'readwrite');
 
   try {
     await Promise.all([
       ...tabs.map(async tab => {
-        let dbTab = await tx.store.get(tab.url);
-        if (!dbTab) {
-          dbTab = tab;
-        } else {
-          dbTab.count++;
-        }
-        await tx.store.put(dbTab);
+        return _addTab(tab, tx);
       }),
       tx.done,
     ]);

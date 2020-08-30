@@ -1,14 +1,29 @@
 .root {
+  background: #eee;
   padding: 20px;
   flex-flow: column;
 
   & > * {
     flex: 0 0 auto;
-    margin-bottom: 10px;
   }
 }
 
 .tab {
+  display: grid;
+  width: 900px;
+  padding: 5px;
+  grid-template-columns: 30px 1fr;
+
+  &:hover {
+    background: white;
+    & .tabActions {
+      opacity: 1;
+    }
+  }
+}
+
+.tabContent {
+  display: flex;
   flex-flow: column;
 
   & > * {
@@ -16,8 +31,18 @@
   }
 }
 
+.tabHeader {
+  justify-content: space-between;
+}
 .tabTitle {
+  flex: 1 1 1px;
   font-weight: bold;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.tabActions {
+  opacity: 0;
 }
 
 .tabDetails {
