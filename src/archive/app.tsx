@@ -74,21 +74,98 @@ export const App: React.FC = function App() {
     fetchRecent();
   };
 
+  const batchArchive = (tabsToArchive: Set<TabInfo>) => {
+    const nextTabs = recentTabs.filter(tab => !tabsToArchive.has(tab));
+    setRecentTabs(nextTabs);
+    addTabs([...tabsToArchive]);
+  };
+
+  const batchForget = async (tabsToForget: Set<TabInfo>) => {
+    const tx = (await db).transaction('tabs', 'readwrite');
+
+    await Promise.all([
+      ...[...tabsToForget].map(
+        tab => tx.store.delete(tab.url)
+      ),
+      tx.done,
+    ]);
+
+    await fetchRecent();
+  };
+
   return (
     <div className={css.root}>
       <h1>Tabs</h1>
-      <h2>Just Archived</h2>
-      {recentTabs.map(tab => (
-        <Tab tab={tab} key={tab.url} onArchive={handleArchive} />
-      ))}
+      <TabSection
+        title="Just Archived"
+        tabs={recentTabs}
+        batchActions={[
+          {label: 'Archive', onAction: batchArchive}
+        ]}
+        onArchive={handleArchive}
+      />
 
-      <h2>Recently Visited</h2>
-      {archivedTabs.map(tab => (
-        <Tab tab={tab} key={tab.url} onForget={handleForget} />
-      ))}
+      <TabSection
+        title="Recently Visited"
+        tabs={archivedTabs}
+        batchActions={[
+          {label: 'Forget', onAction: batchForget}
+        ]}
+        onForget={handleForget}
+      />
     </div>
   );
 };
+
+function TabSection({title, tabs, batchActions, onArchive, onForget}: {
+  title: string,
+  tabs: Array<TabInfo>,
+  batchActions: Array<{
+    label: string,
+    onAction: (tabs: Set<TabInfo>) => unknown,
+  }>,
+  onArchive?: (tab: TabInfo) => unknown,
+  onForget?: (tab: TabInfo) => unknown;
+}) {
+  const [selectedTabs, setSelectedTabs] = React.useState<Set<TabInfo>>(
+    new Set(),
+  );
+
+  const handleSelect = (tab: TabInfo, isSelected: boolean) => {
+    const nextSet = new Set(selectedTabs);
+    if (isSelected) {
+      nextSet.delete(tab);
+    } else {
+      nextSet.add(tab);
+    }
+    setSelectedTabs(nextSet);
+  };
+
+  return (
+    <div className={css.tabSection}>
+      <h2>{title}</h2>
+      <div>
+        batch actions:{' '}
+        {batchActions.map(({label, onAction}) => (
+          <button onClick={() => {
+            onAction(selectedTabs);
+            setSelectedTabs(new Set());
+          }}>{label}</button>
+        ))}
+      </div>
+      {tabs.map(tab => (
+        <Tab
+          tab={tab}
+          key={tab.url}
+          onArchive={onArchive}
+          onForget={onForget}
+          isSelected={selectedTabs.has(tab)}
+          onSelect={handleSelect}
+        />
+      ))}
+    </div>
+);
+}
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat(undefined, {
   style: 'long',
@@ -115,26 +192,32 @@ function formatRelativeTime(date: Date, currentDate = new Date()) {
 
 function Tab({
   tab,
-  archived,
+  isSelected,
   onArchive,
   onForget,
+  onSelect,
 }: {
   tab: TabInfo;
-  archived?: unknown;
+  isSelected: boolean;
   onArchive?: (tab: TabInfo) => unknown;
   onForget?: (tab: TabInfo) => unknown;
+  onSelect: (tab: TabInfo, isSelected: boolean) => unknown;
 }) {
   return (
     <div className={css.tab}>
       <div>
-        <input type="checkbox" />
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onSelect(tab, isSelected)}
+        />
       </div>
       <div className={css.tabContent}>
         <div className={css.tabHeader}>
           <span className={css.tabTitle}>{tab.title}</span>
           <div className={css.tabActions}>
             <button>Read later</button>
-            {!archived && onArchive && (
+            {onArchive && (
               <button onClick={() => onArchive(tab)}>Archive</button>
             )}
             {onForget && <button onClick={() => onForget(tab)}>Forget</button>}

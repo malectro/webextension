@@ -8,6 +8,14 @@
   }
 }
 
+.tabSection {
+  flex-flow: column;
+
+  & > * {
+    flex: 0 0 auto;
+  }
+}
+
 .tab {
   display: grid;
   width: 900px;
