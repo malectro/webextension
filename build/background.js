@@ -1373,6 +1373,7 @@ webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.o
             tabInfo = {
                 title: tab.title,
                 url: tab.url,
+                favIconUrl: tab.favIconUrl,
                 count: 1,
                 lastVisit: new Date()
             };

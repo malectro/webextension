@@ -8,7 +8,10 @@ import css from './app.css';
 
 export const App: React.FC = function App() {
   const [recentTabs, setRecentTabs] = React.useState<Array<TabInfo>>([]);
-  const [archivedTabs, setArchivedTabs] = React.useState<Array<TabInfo>>([]);
+  const [{tabs: archivedTabs, hasMore}, setArchivedTabs] = React.useState<{
+    tabs: Array<TabInfo>;
+    hasMore: boolean;
+  }>({tabs: [], hasMore: false});
 
   React.useEffect(() => {
     browser.runtime
@@ -21,22 +24,30 @@ export const App: React.FC = function App() {
       });
   }, []);
 
+  const limit = 20;
   const fetchRecent = async () => {
-    const limit = 10;
+    setArchivedTabs(await fetchSlice(0, limit));
+  };
+
+  const fetchMore = async () => {
+    const page = await fetchSlice(archivedTabs.length, limit);
+    setArchivedTabs({
+      tabs: [...archivedTabs, ...page.tabs],
+      hasMore: page.hasMore,
+    });
+  };
+
+  const fetchSlice = async (offset: number, limit: number) => {
     const tabs = [];
     const index = (await db).transaction('tabs').store.index('by-lastVisit');
 
-    let i = 0;
-    for await (const cursor of index.iterate()) {
-      if (i >= limit) {
-        break;
-      }
-
+    for await (const cursor of take(drop(index.iterate(), offset), limit)) {
       tabs.push(cursor.value);
-      i++;
     }
 
-    setArchivedTabs(tabs);
+    const hasMore = tabs.length >= limit;
+
+    return {tabs: hasMore ? tabs.slice(0, -1) : tabs, hasMore};
   };
 
   React.useEffect(() => {
@@ -84,9 +95,7 @@ export const App: React.FC = function App() {
     const tx = (await db).transaction('tabs', 'readwrite');
 
     await Promise.all([
-      ...[...tabsToForget].map(
-        tab => tx.store.delete(tab.url)
-      ),
+      ...[...tabsToForget].map(tab => tx.store.delete(tab.url)),
       tx.done,
     ]);
 
@@ -99,32 +108,35 @@ export const App: React.FC = function App() {
       <TabSection
         title="Just Archived"
         tabs={recentTabs}
-        batchActions={[
-          {label: 'Archive', onAction: batchArchive}
-        ]}
+        batchActions={[{label: 'Archive', onAction: batchArchive}]}
         onArchive={handleArchive}
       />
 
       <TabSection
         title="Recently Visited"
         tabs={archivedTabs}
-        batchActions={[
-          {label: 'Forget', onAction: batchForget}
-        ]}
+        batchActions={[{label: 'Forget', onAction: batchForget}]}
         onForget={handleForget}
       />
+      {hasMore && <button onClick={fetchMore}>More</button>}
     </div>
   );
 };
 
-function TabSection({title, tabs, batchActions, onArchive, onForget}: {
-  title: string,
-  tabs: Array<TabInfo>,
+function TabSection({
+  title,
+  tabs,
+  batchActions,
+  onArchive,
+  onForget,
+}: {
+  title: string;
+  tabs: Array<TabInfo>;
   batchActions: Array<{
-    label: string,
-    onAction: (tabs: Set<TabInfo>) => unknown,
-  }>,
-  onArchive?: (tab: TabInfo) => unknown,
+    label: string;
+    onAction: (tabs: Set<TabInfo>) => unknown;
+  }>;
+  onArchive?: (tab: TabInfo) => unknown;
   onForget?: (tab: TabInfo) => unknown;
 }) {
   const [selectedTabs, setSelectedTabs] = React.useState<Set<TabInfo>>(
@@ -147,10 +159,15 @@ function TabSection({title, tabs, batchActions, onArchive, onForget}: {
       <div>
         batch actions:{' '}
         {batchActions.map(({label, onAction}) => (
-          <button onClick={() => {
-            onAction(selectedTabs);
-            setSelectedTabs(new Set());
-          }}>{label}</button>
+          <button
+            key={label}
+            onClick={() => {
+              onAction(selectedTabs);
+              setSelectedTabs(new Set());
+            }}
+          >
+            {label}
+          </button>
         ))}
       </div>
       {tabs.map(tab => (
@@ -164,7 +181,7 @@ function TabSection({title, tabs, batchActions, onArchive, onForget}: {
         />
       ))}
     </div>
-);
+  );
 }
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat(undefined, {
@@ -214,7 +231,9 @@ function Tab({
       </div>
       <div className={css.tabContent}>
         <div className={css.tabHeader}>
-          <span className={css.tabTitle}>{tab.title}</span>
+          <span className={css.tabTitle}>
+            <img className={css.favicon} src={tab.favIconUrl} /> {tab.title}
+          </span>
           <div className={css.tabActions}>
             <button>Read later</button>
             {onArchive && (
@@ -250,7 +269,9 @@ async function _addTab(tab: TabInfo, tx: IDBPTransaction<TabDb, ['tabs']>) {
   if (!dbTab) {
     dbTab = tab;
   } else {
-    dbTab.count++;
+    dbTab = {...dbTab, ...tab,
+      count: dbTab.count + 1
+    };
   }
   await tx.store.put(dbTab);
 }
@@ -289,4 +310,31 @@ interface TabDb extends DBSchema {
       'by-lastVisit': string;
     };
   };
+}
+
+async function* drop<T>(
+  iter: AsyncIterableIterator<T>,
+  count: number,
+): AsyncIterableIterator<T> {
+  let i = 0;
+  for await (let val of iter) {
+    if (i >= count) {
+      yield val;
+    }
+    i++;
+  }
+}
+
+async function* take<T>(
+  iter: AsyncIterableIterator<T>,
+  count: number,
+): AsyncIterableIterator<T> {
+  let i = 0;
+  for await (let value of iter) {
+    if (i > count) {
+      return;
+    }
+    yield value;
+    i++;
+  }
 }
