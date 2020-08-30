@@ -1353,18 +1353,18 @@ webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.o
     });
     const newTab = await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.create({
         active: true,
-        url: "/archive.html"
+        url: '/archive.html'
     });
     const listener = (message, sender)=>{
         var ref;
-        if (((ref = sender.tab) === null || ref === void 0 ? void 0 : ref.id) === newTab.id && message.type === "archive-loaded") {
+        if (((ref = sender.tab) === null || ref === void 0 ? void 0 : ref.id) === newTab.id && message.type === 'archive-loaded') {
             webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].runtime.onMessage.removeListener(listener);
             return Promise.resolve(tabsInfo);
         }
     };
     webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].runtime.onMessage.addListener(listener);
     if (!newTab.id) {
-        throw new Error("Failed to create new tab.");
+        throw new Error('Failed to create new tab.');
     }
     const tabsMap = new Map();
     for (const tab of tabs){
@@ -1373,7 +1373,8 @@ webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.o
             tabInfo = {
                 title: tab.title,
                 url: tab.url,
-                count: 1
+                count: 1,
+                lastVisit: new Date()
             };
             tabsMap.set(tabInfo.url, tabInfo);
         }
@@ -1384,10 +1385,10 @@ webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.o
     ];
     try {
         const response = await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.sendMessage(newTab.id, {
-            type: "archive-tabs",
+            type: 'archive-tabs',
             payload: tabsInfo
         });
-        console.log("response", response);
+        console.log('response', response);
     } catch (error) {
         console.error(error);
     }

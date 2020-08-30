@@ -1,0 +1,8 @@
+trailingComma: 'all'
+bracketSpacing: false
+singleQuote: true
+endOfLine: lf
+overrides:
+  - files: ['*.js', '*.jsx']
+    options:
+      parser: 'babel-flow'

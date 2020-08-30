@@ -1,6 +1,8 @@
 export interface TabInfo {
   title: string;
   url: string;
+  count: number;
+  lastVisit: Date;
 }
 
 export interface ArchiveMessage {

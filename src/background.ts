@@ -1,16 +1,16 @@
-import { browser, Runtime } from "webextension-polyfill-ts";
+import {browser, Runtime} from 'webextension-polyfill-ts';
 
-import { KyleMessage } from "./archive/messages";
+import {KyleMessage} from './archive/messages';
 
 browser.browserAction.onClicked.addListener(async () => {
-  const tabs = await browser.tabs.query({ currentWindow: true, pinned: false });
+  const tabs = await browser.tabs.query({currentWindow: true, pinned: false});
   const newTab = await browser.tabs.create({
     active: true,
-    url: "/archive.html"
+    url: '/archive.html',
   });
 
   const listener = (message: KyleMessage, sender: Runtime.MessageSender) => {
-    if (sender.tab?.id === newTab.id && message.type === "archive-loaded") {
+    if (sender.tab?.id === newTab.id && message.type === 'archive-loaded') {
       browser.runtime.onMessage.removeListener(listener);
       return Promise.resolve(tabsInfo);
     }
@@ -18,7 +18,7 @@ browser.browserAction.onClicked.addListener(async () => {
   browser.runtime.onMessage.addListener(listener);
 
   if (!newTab.id) {
-    throw new Error("Failed to create new tab.");
+    throw new Error('Failed to create new tab.');
   }
 
   const tabsMap = new Map();
@@ -28,7 +28,8 @@ browser.browserAction.onClicked.addListener(async () => {
       tabInfo = {
         title: tab.title,
         url: tab.url,
-        count: 1
+        count: 1,
+        lastVisit: new Date(),
       };
       tabsMap.set(tabInfo.url, tabInfo);
     }
@@ -39,10 +40,10 @@ browser.browserAction.onClicked.addListener(async () => {
 
   try {
     const response = await browser.tabs.sendMessage(newTab.id, {
-      type: "archive-tabs",
-      payload: tabsInfo
+      type: 'archive-tabs',
+      payload: tabsInfo,
     });
-    console.log("response", response);
+    console.log('response', response);
   } catch (error) {
     console.error(error);
   }

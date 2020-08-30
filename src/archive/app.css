@@ -19,3 +19,8 @@
 .tabTitle {
   font-weight: bold;
 }
+
+.tabDetails {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+}
