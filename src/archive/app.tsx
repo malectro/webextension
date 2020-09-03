@@ -19,6 +19,9 @@ export const App: React.FC = function App() {
         type: 'archive-loaded',
       })
       .then(async tabs => {
+        for (const tab of tabs) {
+          tab.lastVisit = new Date(tab.lastVisit);
+        }
         setRecentTabs(tabs);
         addTabs(tabs);
       });
@@ -90,6 +93,9 @@ export const App: React.FC = function App() {
     setRecentTabs(nextTabs);
     addTabs([...tabsToArchive]);
   };
+  const archiveAll = () => {
+    batchArchive(new Set(recentTabs));
+  };
 
   const batchForget = async (tabsToForget: Set<TabInfo>) => {
     const tx = (await db).transaction('tabs', 'readwrite');
@@ -105,12 +111,17 @@ export const App: React.FC = function App() {
   return (
     <div className={css.root}>
       <h1>Tabs</h1>
-      <TabSection
-        title="Just Archived"
-        tabs={recentTabs}
-        batchActions={[{label: 'Archive', onAction: batchArchive}]}
-        onArchive={handleArchive}
-      />
+      {recentTabs.length > 0 && (
+        <TabSection
+          title="Just Archived"
+          tabs={recentTabs}
+          batchActions={[
+            {label: 'Archive', onAction: batchArchive},
+            {label: 'Archive all', onAction: archiveAll},
+          ]}
+          onArchive={handleArchive}
+        />
+      )}
 
       <TabSection
         title="Recently Visited"
@@ -269,9 +280,7 @@ async function _addTab(tab: TabInfo, tx: IDBPTransaction<TabDb, ['tabs']>) {
   if (!dbTab) {
     dbTab = tab;
   } else {
-    dbTab = {...dbTab, ...tab,
-      count: dbTab.count + 1
-    };
+    dbTab = {...dbTab, ...tab, count: dbTab.count + 1};
   }
   await tx.store.put(dbTab);
 }

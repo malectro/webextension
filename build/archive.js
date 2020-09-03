@@ -30334,6 +30334,9 @@ const App = function App() {
         webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].runtime.sendMessage({
             type: 'archive-loaded'
         }).then(async (tabs)=>{
+            for (const tab of tabs){
+                tab.lastVisit = new Date(tab.lastVisit);
+            }
             setRecentTabs(tabs);
             addTabs(tabs);
         });
@@ -30406,6 +30409,9 @@ const App = function App() {
             ...tabsToArchive
         ]);
     };
+    const archiveAll = ()=>{
+        batchArchive(new Set(recentTabs));
+    };
     const batchForget = async (tabsToForget)=>{
         const tx = (await db1).transaction('tabs', 'readwrite');
         await Promise.all([
@@ -30419,14 +30425,18 @@ const App = function App() {
     };
     return react__WEBPACK_IMPORTED_MODULE_1__["createElement"]("div", {
         className: _app_css__WEBPACK_IMPORTED_MODULE_4___default.a.root
-    }, react__WEBPACK_IMPORTED_MODULE_1__["createElement"]("h1", null, "Tabs"), react__WEBPACK_IMPORTED_MODULE_1__["createElement"](TabSection, {
+    }, react__WEBPACK_IMPORTED_MODULE_1__["createElement"]("h1", null, "Tabs"), recentTabs.length > 0 && react__WEBPACK_IMPORTED_MODULE_1__["createElement"](TabSection, {
         title: "Just Archived",
         tabs: recentTabs,
         batchActions: [
             {
                 label: 'Archive',
                 onAction: batchArchive
-            }
+            },
+            {
+                label: 'Archive all',
+                onAction: archiveAll
+            }, 
         ],
         onArchive: handleArchive
     }), react__WEBPACK_IMPORTED_MODULE_1__["createElement"](TabSection, {

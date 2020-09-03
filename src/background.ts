@@ -49,11 +49,9 @@ browser.browserAction.onClicked.addListener(async () => {
     console.error(error);
   }
 
-  /*
   await browser.tabs.remove(
     tabs.map(tab => tab.id).filter(isDefined)
   );
-  */
 });
 
 function isDefined<V>(value: V | null | undefined): value is V {

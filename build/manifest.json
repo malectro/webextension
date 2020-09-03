@@ -1,13 +1,23 @@
 {
+  "manifest_version": 2,
   "name": "Kyle's Extension",
   "version": "0.0.0",
-  "manifest_version": 2,
+  "minimum_chrome_version": "67",
+  "icons": {
+    "16": "images/plimp.png",
+    "48": "images/plimp.png",
+    "128": "images/plimp.png"
+  },
   "background": {
+    "persistent": false,
     "scripts": ["background.js"]
   },
   "browser_action": {
-    "browser_style": true,
-    "default_icon": "images/plimp.svg"
+    "default_icon": {
+      "16": "images/plimp.png",
+      "48": "images/plimp.png",
+      "128": "images/plimp.png"
+    }
   },
   "permissions": [
     "tabs"

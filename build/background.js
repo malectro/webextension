@@ -1393,6 +1393,8 @@ webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].browserAction.o
     } catch (error) {
         console.error(error);
     }
+    await webextension_polyfill_ts__WEBPACK_IMPORTED_MODULE_0__["browser"].tabs.remove(tabs.map((tab1)=>tab1.id
+    ).filter(isDefined));
 });
 function isDefined(value) {
     return value != null;
